@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Sensitive Config & Environment
+config.json
+config.local.json
+.env
+.env.local
+*.log
+
+# Temporary & Cache Directories
+.git_repo_cache/
+scratch/
+downloaded_archive/
+dist_release/
+tmp/
+temp/
+
+# System & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
