@@ -3,7 +3,7 @@
 import path from 'node:path';
 import { Command } from 'commander';
 import { getConfig, validateConfig } from './config.js';
-import { processLocalImages } from './imageProcessor.js';
+import { processLocalImages, saveProcessedFile } from './imageProcessor.js';
 import { GitHubManager } from './githubClient.js';
 import { startServer } from './server.js';
 
@@ -36,6 +36,7 @@ program
   .description('Process local image(s), convert to WebP with SHA-256 hash name, and upload to GitHub')
   .option('-q, --quality <number>', 'WebP compression quality (1-100)')
   .option('-s, --subfolder <folder>', 'Override date subfolder name (default: YYYY-MM-DD)')
+  .option('-o, --output <dir>', 'Specify local directory to save compressed/processed images')
   .option('-c, --config <path>', 'Custom configuration file path (config.json)')
   .action(async (localPath, options) => {
     try {
@@ -44,12 +45,24 @@ program
       validateConfig(config);
 
       const quality = options.quality ? parseInt(options.quality, 10) : config.imageQuality;
+      const outputDir = options.output || config.outputDir;
+
       console.log(`🖼️  Processing local images at '${localPath}' (WebP Quality: ${quality})...`);
 
-      const processedImages = await processLocalImages(localPath, quality);
+      const processedImages = await processLocalImages(localPath, quality, config.enableCompression, config.concurrencyLimit, config.supportedImageExts);
       if (processedImages.length === 0) {
         console.log('⚠️  No valid images found to process.');
         return;
+      }
+
+      if (outputDir) {
+        console.log(`💾 Saving processed image(s) to local output directory '${outputDir}'...`);
+        for (const item of processedImages) {
+          const savedPath = await saveProcessedFile(item, outputDir);
+          if (savedPath) {
+            console.log(`  💾 Saved: ${savedPath}`);
+          }
+        }
       }
 
       console.log(`✅ Processed ${processedImages.length} image(s). Connecting to GitHub repo '${config.owner}/${config.repo}'...`);

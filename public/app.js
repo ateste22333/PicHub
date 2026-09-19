@@ -242,6 +242,11 @@ async function loadConfig() {
       const supportedExtsInput = document.getElementById('supported-image-exts');
       if (supportedExtsInput) supportedExtsInput.value = activeSupportedImageExts;
 
+      const outputDirInput = document.getElementById('output-dir');
+      if (outputDirInput) outputDirInput.value = cfg.outputDir || '';
+      const uploadOutputDirInput = document.getElementById('upload-output-dir');
+      if (uploadOutputDirInput) uploadOutputDirInput.value = cfg.outputDir || '';
+
       updateCdnRadioCards();
 
       if (!cfg.githubToken || !cfg.owner || !cfg.repo) {
@@ -272,6 +277,7 @@ async function saveConfigForm(e) {
     cdnProvider: document.querySelector('input[name="cdnProvider"]:checked')?.value || 'jsDelivr',
     customCdnTemplate: document.getElementById('custom-cdn-template')?.value.trim() || '',
     supportedImageExts: document.getElementById('supported-image-exts')?.value.trim() || 'jpg, jpeg, png, webp, gif, tiff, bmp, svg, avif, ico',
+    outputDir: document.getElementById('output-dir')?.value.trim() || '',
   };
 
   try {
@@ -338,11 +344,15 @@ function setupDropzone() {
 async function uploadBrowserFiles(files) {
   const formData = new FormData();
   const quality = document.getElementById('upload-quality').value;
+  const outputDir = document.getElementById('upload-output-dir')?.value.trim();
 
   for (let i = 0; i < files.length; i++) {
     formData.append('files', files[i]);
   }
   formData.append('quality', quality);
+  if (outputDir) {
+    formData.append('outputDir', outputDir);
+  }
 
   showToast(`正在处理并上传 ${files.length} 个图片...`, 'info');
 
@@ -374,14 +384,18 @@ async function uploadLocalPath() {
   }
 
   const quality = document.getElementById('upload-quality').value;
+  const outputDir = document.getElementById('upload-output-dir')?.value.trim();
 
   showToast(`正在处理本地目录: ${localPath}...`, 'info');
 
   try {
+    const reqBody = { localPath, quality };
+    if (outputDir) reqBody.outputDir = outputDir;
+
     const res = await fetch('/api/upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ localPath, quality })
+      body: JSON.stringify(reqBody)
     });
     const data = await res.json();
     if (data.success) {

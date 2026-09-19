@@ -40,9 +40,10 @@ export function calculateHash(buffer) {
  * @param {boolean} enableCompression - Whether to compress & convert to WebP
  * @param {string} [originalFilename] - Original filename
  * @param {string|Set} [supportedImageExts] - Custom supported image extensions
+ * @param {string} [outputDir] - Optional local output directory to save compressed file
  * @returns {Promise<Object>} Processed file detail
  */
-export async function processSingleImage(input, quality = 80, enableCompression = true, originalFilename = null, supportedImageExts = null) {
+export async function processSingleImage(input, quality = 80, enableCompression = true, originalFilename = null, supportedImageExts = null, outputDir = null) {
   let inputBuffer;
   let originalPath = typeof input === 'string' ? input : null;
   let filenameToUse = originalPath || originalFilename || 'file.bin';
@@ -100,6 +101,11 @@ export async function processSingleImage(input, quality = 80, enableCompression 
     }
   }
 
+  let savedPath = null;
+  if (outputDir) {
+    savedPath = await saveProcessedFile({ buffer: finalBuffer, filename: outputFilename }, outputDir);
+  }
+
   return {
     originalPath,
     originalSize: inputBuffer.length,
@@ -111,7 +117,8 @@ export async function processSingleImage(input, quality = 80, enableCompression 
     height: metadata.height || null,
     format,
     isCompressed,
-    isImage: isImageFormat
+    isImage: isImageFormat,
+    savedPath
   };
 }
 
@@ -175,9 +182,10 @@ export async function mapConcurrent(items, concurrency, asyncFn) {
  * @param {boolean} enableCompression - Enable WebP compression
  * @param {number} [concurrencyLimit=5] - Parallel processing concurrency pool size
  * @param {string|Set} [supportedImageExts] - Custom supported image extensions
+ * @param {string} [outputDir] - Optional local output directory to save compressed files
  * @returns {Promise<Object[]>} Array of processed file details
  */
-export async function processLocalImages(localPath, quality = 80, enableCompression = true, concurrencyLimit = 5, supportedImageExts = null) {
+export async function processLocalImages(localPath, quality = 80, enableCompression = true, concurrencyLimit = 5, supportedImageExts = null, outputDir = null) {
   const stat = await fs.stat(localPath);
   const targetFiles = [];
 
@@ -193,7 +201,7 @@ export async function processLocalImages(localPath, quality = 80, enableCompress
   const results = [];
   await mapConcurrent(targetFiles, concurrencyLimit, async (filePath) => {
     try {
-      const processed = await processSingleImage(filePath, quality, enableCompression, null, supportedImageExts);
+      const processed = await processSingleImage(filePath, quality, enableCompression, null, supportedImageExts, outputDir);
       results.push(processed);
     } catch (err) {
       console.error(`[ImageProcessor Error] Failed to process ${filePath}: ${err.message}`);
@@ -202,3 +210,25 @@ export async function processLocalImages(localPath, quality = 80, enableCompress
 
   return results;
 }
+
+/**
+ * Saves a processed image/file buffer to specified local output folder.
+ * 
+ * @param {Object} processed - Processed image object with buffer and filename
+ * @param {string} outputDir - Target local directory
+ * @returns {Promise<string|null>} Path where file was saved, or null if outputDir not specified
+ */
+export async function saveProcessedFile(processed, outputDir) {
+  if (!outputDir || !processed || !processed.buffer || !processed.filename) return null;
+  try {
+    const targetDir = path.resolve(outputDir);
+    await fs.mkdir(targetDir, { recursive: true });
+    const savePath = path.join(targetDir, processed.filename);
+    await fs.writeFile(savePath, processed.buffer);
+    return savePath;
+  } catch (err) {
+    console.error(`[ImageProcessor Warning] Failed to save processed file to output directory '${outputDir}': ${err.message}`);
+    return null;
+  }
+}
+

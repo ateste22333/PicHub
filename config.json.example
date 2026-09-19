@@ -12,5 +12,6 @@
   "cdnProvider": "jsDelivr",
   "customCdnTemplate": "",
   "supportedImageExts": "jpg, jpeg, png, webp, gif, tiff, bmp, svg, avif, ico",
-  "uploadEngine": "git"
+  "uploadEngine": "git",
+  "outputDir": ""
 }

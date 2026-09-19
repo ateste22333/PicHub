@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import sharp from 'sharp';
-import { calculateHash, processSingleImage } from '../src/imageProcessor.js';
+import { calculateHash, processSingleImage, saveProcessedFile } from '../src/imageProcessor.js';
 import { getJsDelivrUrl } from '../src/cdnHelper.js';
 import { getConfig } from '../src/config.js';
 import { getFormattedDate } from '../src/githubClient.js';
@@ -50,13 +52,31 @@ async function runTests() {
 
   console.log(`✅ [Pass] processSingleImage() & SHA-256 Hash -> ${processed.filename} (${processed.processedSize} bytes)`);
 
-  // Test 4: Config loader test (uploadBasePath defaults to empty string)
+  // Test 4: Save processed image to output directory
+  const tempOutputDir = path.join(process.cwd(), 'scratch_test_output');
+  const savedPath = await saveProcessedFile(processed, tempOutputDir);
+  assert.ok(savedPath, 'saveProcessedFile should return saved file path');
+  const fileExists = await fs.stat(savedPath).then(s => s.isFile()).catch(() => false);
+  assert.equal(fileExists, true, 'File should exist on disk at saved path');
+  await fs.rm(tempOutputDir, { recursive: true, force: true });
+  console.log(`✅ [Pass] saveProcessedFile() -> Successfully saved compressed file to '${savedPath}'`);
+
+  // Test 4.5: processSingleImage directly with outputDir argument
+  const directProcessed = await processSingleImage(testImgBuffer, 80, true, 'test2.png', null, tempOutputDir);
+  assert.ok(directProcessed.savedPath, 'directProcessed should have savedPath');
+  const directFileExists = await fs.stat(directProcessed.savedPath).then(s => s.isFile()).catch(() => false);
+  assert.equal(directFileExists, true, 'Directly saved file should exist on disk');
+  await fs.rm(tempOutputDir, { recursive: true, force: true });
+  console.log(`✅ [Pass] processSingleImage(..., outputDir) -> Automatically saved compressed file to '${directProcessed.savedPath}'`);
+
+  // Test 5: Config loader test (uploadBasePath and outputDir exist)
   const config = await getConfig();
   assert.ok(typeof config.imageQuality === 'number');
   assert.equal(typeof config.uploadBasePath, 'string');
-  console.log(`✅ [Pass] getConfig() -> uploadBasePath: '${config.uploadBasePath}', quality: ${config.imageQuality}`);
+  assert.equal(typeof config.outputDir, 'string');
+  console.log(`✅ [Pass] getConfig() -> uploadBasePath: '${config.uploadBasePath}', outputDir: '${config.outputDir}', quality: ${config.imageQuality}`);
 
-  // Test 5: Express Web Server API Test
+  // Test 6: Express Web Server API Test
   const testPort = 3099;
   const server = startServer(testPort);
   try {
@@ -64,7 +84,8 @@ async function runTests() {
     const data = await res.json();
     assert.equal(data.success, true);
     assert.ok(data.config);
-    console.log(`✅ [Pass] Express Web Server GET /api/config returned HTTP 200 OK`);
+    assert.equal(typeof data.config.outputDir, 'string');
+    console.log(`✅ [Pass] Express Web Server GET /api/config returned HTTP 200 OK with outputDir`);
   } finally {
     server.close();
   }

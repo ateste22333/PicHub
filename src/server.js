@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { getConfig, saveConfig, validateConfig } from './config.js';
-import { processSingleImage, processLocalImages, mapConcurrent } from './imageProcessor.js';
+import { processSingleImage, processLocalImages, mapConcurrent, saveProcessedFile } from './imageProcessor.js';
 import { GitHubManager, getFormattedDate } from './githubClient.js';
 import { getCdnUrl } from './cdnHelper.js';
 import { logger } from './logger.js';
@@ -90,7 +90,7 @@ app.post('/api/config', async (req, res) => {
   try {
     const newConfig = req.body;
     const saved = await saveConfig(newConfig);
-    logger.info(`系统配置已更新: 压缩=${saved.enableCompression}, 模式=${saved.uploadMode}, 并发线程数=${saved.concurrencyLimit}, CDN=${saved.cdnProvider}`, { config: saved });
+    logger.info(`系统配置已更新: 压缩=${saved.enableCompression}, 模式=${saved.uploadMode}, 并发线程数=${saved.concurrencyLimit}, CDN=${saved.cdnProvider}, 输出目录=${saved.outputDir || '未指定'}`, { config: saved });
     res.json({ success: true, config: saved });
   } catch (err) {
     logger.error(`保存配置失败: ${err.message}`);
@@ -112,6 +112,9 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
       : config.enableCompression;
     const quality = req.body.quality ? parseInt(req.body.quality, 10) : config.imageQuality;
     const concurrencyLimit = config.concurrencyLimit || 5;
+    const outputDir = (req.body.outputDir && String(req.body.outputDir).trim())
+      ? String(req.body.outputDir).trim()
+      : (config.outputDir && String(config.outputDir).trim() ? String(config.outputDir).trim() : '');
 
     let targetSubFolder;
     if (req.body.subfolder !== undefined && req.body.subfolder !== '') {
@@ -136,7 +139,7 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
     }
 
     const task = taskManager.createTask(`图片处理与上传 (${totalCount}项)`, 'upload', totalCount);
-    logger.info(`开始处理上传任务 (ID: ${task.id}), 目标子目录: '${targetSubFolder}', 压缩模式: ${enableCompression ? '开启' : '关闭'}, 并发线程数: ${concurrencyLimit}`);
+    logger.info(`开始处理上传任务 (ID: ${task.id}), 目标子目录: '${targetSubFolder}', 压缩模式: ${enableCompression ? '开启' : '关闭'}, 并发线程数: ${concurrencyLimit}${outputDir ? `, 本地输出目录: '${outputDir}'` : ''}`);
 
     const maxRounds = 3;
     const results = [];
@@ -158,8 +161,12 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
         const failedInRound = [];
         await mapConcurrent(currentQueue, concurrencyLimit, async (item) => {
           try {
-            const processed = await processSingleImage(item.originalBuffer, quality, enableCompression, item.originalname, config.supportedImageExts);
+            const processed = await processSingleImage(item.originalBuffer, quality, enableCompression, item.originalname, config.supportedImageExts, outputDir);
             processed.originalName = item.originalname;
+
+            if (processed.savedPath) {
+              logger.info(`[本地保存成功] 压缩重命名文件已保存在指定文件夹: ${processed.savedPath}`);
+            }
 
             const uploadRes = await ghManager.uploadImage(processed, targetSubFolder);
             const itemRes = {
@@ -168,7 +175,8 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
               ...uploadRes,
               processedSize: processed.processedSize,
               width: processed.width,
-              height: processed.height
+              height: processed.height,
+              savedPath: processed.savedPath || null
             };
 
             results.push(itemRes);
@@ -202,7 +210,12 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
         round++;
       }
     } else if (localDirectoryPath) {
-      const processedList = await processLocalImages(localDirectoryPath, quality, enableCompression, concurrencyLimit, config.supportedImageExts);
+      const processedList = await processLocalImages(localDirectoryPath, quality, enableCompression, concurrencyLimit, config.supportedImageExts, outputDir);
+      for (const item of processedList) {
+        if (item.savedPath) {
+          logger.info(`[本地保存成功] 压缩重命名文件已保存在指定文件夹: ${item.savedPath}`);
+        }
+      }
       task.total = processedList.length;
       task.progress = processedList.length === 0 ? 100 : 0;
 

@@ -76,10 +76,14 @@
         </header>
 
         <div class="card">
-          <div class="upload-options-single">
-            <div class="option-group">
+          <div class="upload-options-single" style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+            <div class="option-group" style="flex: 1; min-width: 240px;">
               <label for="upload-quality"><i class="fa-solid fa-sliders"></i> WebP 压缩质量 (<span id="quality-val">80</span>%):</label>
               <input type="range" id="upload-quality" min="10" max="100" value="80" oninput="document.getElementById('quality-val').innerText=this.value">
+            </div>
+            <div class="option-group" style="flex: 1.5; min-width: 280px;">
+              <label for="upload-output-dir"><i class="fa-solid fa-folder-arrow-down"></i> 本地输出保存文件夹 (可选):</label>
+              <input type="text" id="upload-output-dir" placeholder="例如: ./output 或 D:\compressed_images" style="width: 100%; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;">
             </div>
           </div>
 
@@ -510,6 +514,17 @@
                       class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all-custom">
                   </div>
                 </div>
+
+                <!-- Local Output Directory -->
+                <div class="pt-3 border-t border-gray-100">
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5 flex items-center justify-between">
+                    <span>本地压缩图片输出保存文件夹 (Output Dir)</span>
+                    <span class="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2.5 py-0.5 rounded-md">本地备份保存</span>
+                  </label>
+                  <input type="text" id="output-dir" placeholder="例如 ./output 或 D:\compressed_images (留空则不保存到本地)" 
+                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono transition-all-custom">
+                  <p class="mt-1.5 text-xs text-gray-400">设置图片处理/压缩后保存的本地输出文件夹。若填入路径，处理或上传图片时会将压缩后的文件同步保存一份至该本地文件夹。</p>
+                </div>
               </div>
             </section>
 
@@ -560,6 +575,14 @@
                   <input type="text" id="supported-image-exts" placeholder="jpg, jpeg, png, webp, gif, tiff, bmp, svg, avif, ico"
                     class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono transition-all-custom">
                   <p class="text-xs text-gray-400">只有包含在此后缀列表内的图片文件在开启压缩时才会进行算法转换；其他非图片格式（如代码、文档、压缩包等）将保持原格式无损直传。</p>
+                </div>
+
+                <!-- Local Output Directory -->
+                <div class="space-y-1.5 pt-3 border-t border-gray-100">
+                  <label class="block text-sm font-medium text-gray-700">本地压缩图片输出保存文件夹 <span class="text-xs text-gray-400">(可选，例如 ./output 或 D:\compressed)</span></label>
+                  <input type="text" id="output-dir" placeholder="例如 ./output 或 D:\compressed_images (留空则不保存到本地)"
+                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono transition-all-custom">
+                  <p class="text-xs text-gray-400">设置图片压缩处理后本地保存的输出文件夹。若指定，上传/处理图片时将同步在本地保存一份压缩后的文件。</p>
                 </div>
               </div>
             </section>

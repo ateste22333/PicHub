@@ -47,6 +47,7 @@ export async function getConfig(customPath = null) {
     cdnProvider: fileConfig.cdnProvider || process.env.CDN_PROVIDER || 'jsDelivr',
     customCdnTemplate: fileConfig.customCdnTemplate || process.env.CUSTOM_CDN_TEMPLATE || '',
     supportedImageExts: fileConfig.supportedImageExts || process.env.SUPPORTED_IMAGE_EXTS || 'jpg, jpeg, png, webp, gif, tiff, bmp, svg, avif, ico',
+    outputDir: fileConfig.outputDir ?? process.env.OUTPUT_DIR ?? '',
   };
 
   return config;
@@ -75,6 +76,7 @@ export async function saveConfig(newConfig, customPath = null) {
     customCdnTemplate: newConfig.customCdnTemplate || '',
     supportedImageExts: newConfig.supportedImageExts || 'jpg, jpeg, png, webp, gif, tiff, bmp, svg, avif, ico',
     uploadEngine: newConfig.uploadEngine || 'git',
+    outputDir: newConfig.outputDir || '',
   };
 
   await fs.writeFile(targetPath, JSON.stringify(merged, null, 2), 'utf8');
