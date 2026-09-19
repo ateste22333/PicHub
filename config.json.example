@@ -1,15 +1,16 @@
 {
-  "githubToken": "ghp_your_github_personal_access_token_here",
-  "owner": "your_github_username",
-  "repo": "your_repository_name",
+  "githubToken": "",
+  "owner": "",
+  "repo": "",
   "branch": "main",
-  "uploadBasePath": "images",
+  "uploadBasePath": "",
   "imageQuality": 80,
   "enableCompression": true,
   "uploadMode": "1",
-  "customFolderName": "uploads",
-  "concurrencyLimit": 5,
+  "customFolderName": "wallpaper2",
+  "concurrencyLimit": 2,
   "cdnProvider": "jsDelivr",
   "customCdnTemplate": "",
-  "supportedImageExts": "jpg, jpeg, png, webp, gif, tiff, bmp, svg, avif, ico"
+  "supportedImageExts": "jpg, jpeg, png, webp, gif, tiff, bmp, svg, avif, ico",
+  "uploadEngine": "git"
 }
